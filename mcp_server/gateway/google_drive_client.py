@@ -4,7 +4,9 @@ Handles all interactions with Google Drive API
 """
 import io
 import os
-from typing import Optional
+import json
+import csv
+from typing import Optional, Dict, Any
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -46,19 +48,120 @@ class GoogleDriveClient:
         except Exception as e:
             print(f"Error fatal al inicializar Google Drive: {e}")
     
-    def read_file(self, file_id: str) -> str:
+    def _convert_markdown_to_json(self, markdown_content: str, file_name: str) -> str:
+        """
+        Convert Markdown content to structured JSON format
+        
+        Args:
+            markdown_content: The markdown text content
+            file_name: Name of the file
+            
+        Returns:
+            JSON string with structured content
+        """
+        lines = markdown_content.split('\n')
+        sections = []
+        current_section = None
+        current_content = []
+        
+        for line in lines:
+            # Detect headers
+            if line.startswith('#'):
+                # Save previous section if exists
+                if current_section is not None:
+                    sections.append({
+                        "type": current_section["type"],
+                        "title": current_section["title"],
+                        "level": current_section["level"],
+                        "content": '\n'.join(current_content).strip()
+                    })
+                
+                # Start new section
+                level = len(line) - len(line.lstrip('#'))
+                title = line.lstrip('#').strip()
+                current_section = {
+                    "type": "heading",
+                    "title": title,
+                    "level": level
+                }
+                current_content = []
+            else:
+                # Add content to current section
+                if line.strip():
+                    current_content.append(line)
+        
+        # Add last section
+        if current_section is not None:
+            sections.append({
+                "type": current_section["type"],
+                "title": current_section["title"],
+                "level": current_section["level"],
+                "content": '\n'.join(current_content).strip()
+            })
+        
+        # If no sections were found, treat all content as body
+        if not sections:
+            sections.append({
+                "type": "body",
+                "content": markdown_content.strip()
+            })
+        
+        result = {
+            "file_name": file_name,
+            "type": "google_docs",
+            "format": "json",
+            "sections": sections,
+            "raw_content": markdown_content
+        }
+        
+        return json.dumps(result, ensure_ascii=False, indent=2)
+    
+    def _convert_csv_to_json(self, csv_content: str, file_name: str) -> str:
+        """
+        Convert CSV content to JSON array
+        
+        Args:
+            csv_content: The CSV text content
+            file_name: Name of the file
+            
+        Returns:
+            JSON string with array of objects
+        """
+        lines = csv_content.strip().split('\n')
+        if not lines:
+            return json.dumps({"file_name": file_name, "type": "google_sheets", "data": []})
+        
+        reader = csv.DictReader(lines)
+        data = list(reader)
+        
+        result = {
+            "file_name": file_name,
+            "type": "google_sheets",
+            "format": "json",
+            "rows": len(data),
+            "columns": list(data[0].keys()) if data else [],
+            "data": data
+        }
+        
+        return json.dumps(result, ensure_ascii=False, indent=2)
+    
+    def read_file(self, file_id: str, return_json: bool = True) -> str:
         """
         Read content from a Google Drive file
         
         Supports both:
         - Binary files (PDFs, images, etc.) - downloaded directly
-        - Google Workspace files (Docs, Sheets, Slides) - exported as text/plain
+        - Google Workspace files - exported and optionally converted to JSON:
+          * Google Docs → JSON structured format (sections, headings, content)
+          * Google Sheets → JSON array of objects
+          * Google Slides → Plain text
         
         Args:
             file_id: The ID of the file to read
+            return_json: If True, converts Google Docs and Sheets to JSON format
             
         Returns:
-            The file content as a string
+            The file content as a string (JSON for Docs/Sheets if return_json=True)
             
         Raises:
             Exception: If the service is not initialized or read fails
@@ -81,10 +184,12 @@ class GoogleDriveClient:
             
             # Map of Google Workspace MIME types to export formats
             google_docs_types = {
-                'application/vnd.google-apps.document': 'text/plain',  # Google Docs
-                'application/vnd.google-apps.spreadsheet': 'text/csv',  # Google Sheets
-                'application/vnd.google-apps.presentation': 'text/plain',  # Google Slides
-                'application/vnd.google-apps.script': 'application/vnd.google-apps.script+json',  # Apps Script
+                'application/vnd.google-apps.document': 'text/markdown',  # Google Docs → Markdown → JSON (MEJOR OPCIÓN)
+                # Alternativa HTML (más compleja de parsear):
+                # 'application/vnd.google-apps.document': 'text/html',  # Google Docs → HTML → JSON
+                'application/vnd.google-apps.spreadsheet': 'text/csv',  # Google Sheets → CSV → JSON
+                'application/vnd.google-apps.presentation': 'text/plain',  # Google Slides → Plain text
+                'application/vnd.google-apps.script': 'application/vnd.google-apps.script+json',  # Apps Script → JSON
             }
             
             # Check if it's a Google Workspace file that needs export
@@ -110,7 +215,18 @@ class GoogleDriveClient:
                 status, done = downloader.next_chunk()
             
             fh.seek(0)
-            return fh.read().decode('utf-8')
+            content = fh.read().decode('utf-8')
+            
+            # Convert to JSON if requested and applicable
+            if return_json:
+                if mime_type == 'application/vnd.google-apps.document':
+                    print(f"[Google Drive] Converting to JSON format")
+                    return self._convert_markdown_to_json(content, file_name)
+                elif mime_type == 'application/vnd.google-apps.spreadsheet':
+                    print(f"[Google Drive] Converting CSV to JSON format")
+                    return self._convert_csv_to_json(content, file_name)
+            
+            return content
             
         except Exception as e:
             print(f"Error en lectura de Drive: {e}")

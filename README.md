@@ -39,11 +39,12 @@ Model Context Protocol (MCP) es un protocolo estándar que permite a las aplicac
 
 ## ✨ Características
 
-- � **Lectura inteligente de archivos**: Soporta Google Docs, Sheets, Slides y archivos de texto
+- 🔍 **Lectura inteligente de archivos**: Soporta Google Docs (Markdown), Sheets (CSV), Slides y archivos de texto
 - 📝 **Actualización de contenido**: Modifica archivos de Google Drive directamente
 - 🔗 **URLs amigables**: Acepta URLs completas de Google Drive (no necesitas extraer el ID manualmente)
 - 🐳 **Docker-ready**: Despliega fácilmente con Docker y Docker Compose
 - 🔄 **Auto-detección de tipos**: Detecta automáticamente el tipo de archivo y usa el método apropiado
+- 📋 **Formato estructurado**: Google Docs exportados en Markdown para preservar formato
 - 🛡️ **Manejo de errores robusto**: Mensajes de error claros y descriptivos
 
 ---
@@ -168,11 +169,13 @@ Obtiene el contenido de un archivo de Google Drive.
 | `url` | `string` | URL completa de Google Drive o file_id |
 
 **Tipos de archivos soportados:**
-- ✅ **Google Docs** → Exportado como texto plano
-- ✅ **Google Sheets** → Exportado como CSV
+- ✅ **Google Docs** → Exportado como **Markdown** (preserva estructura: títulos, listas, negritas, cursivas)
+- ✅ **Google Sheets** → Exportado como **CSV** (datos tabulares)
 - ✅ **Google Slides** → Exportado como texto plano
 - ✅ **Archivos de texto** → `.txt`, `.md`, `.json`, etc.
 - ✅ **Otros archivos binarios** → Con contenido de texto
+
+> 💡 **Nota sobre Markdown**: Google Docs se exporta en formato Markdown, lo que preserva la estructura del documento (encabezados, listas, formato) y facilita la lectura y modificación programática del contenido.
 
 **Ejemplos de uso:**
 
@@ -190,9 +193,34 @@ file_id = "1h9sRNgBeEpC3aa3aXqjVaWTUrbjqKAWtvcoIBXdVdss"
 content = await get_drive_file_tool(file_id)
 ```
 
-**Respuesta:**
+**Ejemplo de respuesta (Google Docs en Markdown):**
+```markdown
+# Mi Documento
+
+## Introducción
+
+Este es un párrafo con **texto en negrita** y *texto en cursiva*.
+
+## Sección Principal
+
+- Item de lista 1
+- Item de lista 2
+  - Sub-item
+  
+### Subsección
+
+1. Elemento numerado 1
+2. Elemento numerado 2
+
+> Esto es una cita o nota importante
 ```
-Contenido del archivo como string
+
+**Ejemplo de respuesta (Google Sheets en CSV):**
+```csv
+Nombre,Edad,Ciudad
+Juan,30,Madrid
+María,25,Barcelona
+Pedro,35,Valencia
 ```
 
 ---

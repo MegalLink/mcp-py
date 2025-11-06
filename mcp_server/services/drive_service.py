@@ -14,21 +14,22 @@ class DriveService:
     def __init__(self):
         self.client = GoogleDriveClient()
     
-    async def get_file_content(self, file_id: str) -> str:
+    async def get_file_content(self, file_id: str, return_json: bool = True) -> str:
         """
         Get the content of a file from Google Drive asynchronously
         
         Args:
             file_id: The ID of the file to read
+            return_json: If True, convert Google Docs/Sheets to structured JSON format
             
         Returns:
-            The file content as a string
+            The file content as a string (JSON format for Docs/Sheets, or raw content)
             
         Raises:
             ValueError: If the file cannot be read
         """
         try:
-            content = await asyncio.to_thread(self.client.read_file, file_id)
+            content = await asyncio.to_thread(self.client.read_file, file_id, return_json)
             return content
         except Exception as e:
             raise ValueError(f"No se pudo leer el archivo '{file_id}': {e}")

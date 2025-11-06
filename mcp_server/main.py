@@ -16,9 +16,9 @@ mcp = FastMCP("Google Drive Server")
 
 # Register tools
 @mcp.tool()
-async def get_drive_file_tool(url: str) -> str:
+async def get_drive_file_tool(url: str, return_json: bool = True) -> str:
     """
-    Tool: Get the text content of a Google Drive file from its URL
+    Tool: Get the content of a Google Drive file from its URL
     
     Args:
         url: The complete Google Drive URL or file ID
@@ -26,8 +26,13 @@ async def get_drive_file_tool(url: str) -> str:
              - https://docs.google.com/document/d/FILE_ID/edit?usp=sharing
              - https://drive.google.com/file/d/FILE_ID/view
              - FILE_ID (direct ID also works)
+        return_json: If True (default), convert Google Docs/Sheets to structured JSON.
+                    If False, return raw markdown/csv content.
+                    
+    Returns:
+        String containing the file content (JSON format for Google Workspace files by default)
     """
-    return await get_drive_file(url)
+    return await get_drive_file(url, return_json)
 
 
 @mcp.tool()
