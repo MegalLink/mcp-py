@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  mcp-server:
+    build: .
+    container_name: mcp-py
+    ports:
+      - "8080:8000"
+    
+    environment:
+      - APP_ENV=production
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    
+    # --- CORRECCIÓN AQUÍ ---
+    # La sección de secretos del servicio solo debe "listar" el nombre
+    # del secreto que quieres usar.
+    secrets:
+      - google_creds
+
+# --- CORRECCIÓN AQUÍ ---
+# La sección de secretos "raíz" (al final) es la que "define"
+# de dónde viene ese secreto. (No es 'external: true')
+secrets:
+  google_creds:
+    file: ./credentials.json # <-- Apunta a tu archivo local
